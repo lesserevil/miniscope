@@ -109,6 +109,9 @@ class Scraper:
     async def download_image(self, url: str, mini_id: int) -> Optional[str]:
         if not url:
             return None
+            
+        # Clean URL of whitespace/tabs (occasionally present in source gallery)
+        url = url.strip().replace("\t", "")
         
         # Prefix filename with DB ID to prevent collisions
         raw_filename = url.split("/")[-1]

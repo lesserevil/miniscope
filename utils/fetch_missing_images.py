@@ -41,7 +41,7 @@ async def redownload():
     async with httpx.AsyncClient(timeout=30.0) as client:
         ai = AIClient()
         for row in tqdm(missing, unit="img"):
-            url = row['image_url']
+            url = row['image_url'].strip().replace("\t", "")
             name = row['name']
             mini_id = row['id']
             
