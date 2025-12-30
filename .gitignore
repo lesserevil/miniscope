@@ -1,0 +1,5 @@
+*.pyc
+data/images/*
+miniscope.db
+__pycache__
+.env

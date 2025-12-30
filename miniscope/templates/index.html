@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Miniscope</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-slate-900 text-slate-100 min-h-screen p-8">
+    <div class="max-w-6xl mx-auto">
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <h1
+                    class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
+                    Miniscope
+                </h1>
+                <p class="text-slate-400">AI-Powered Miniature Explorer</p>
+            </div>
+            <button hx-post="/scrape" hx-swap="outerHTML"
+                class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded shadow transition">
+                Update Data
+            </button>
+        </header>
+
+        <div class="mb-8">
+            <input type="text" name="q"
+                class="w-full bg-slate-800 border border-slate-700 rounded-lg p-4 text-lg focus:ring-2 focus:ring-blue-500 outline-none transition"
+                placeholder="Search for miniatures (e.g., 'red dragon', 'wizard with staff', 'icons of the realms')..."
+                hx-get="/search" hx-trigger="keyup changed delay:500ms, search" hx-target="#results">
+        </div>
+
+        <div id="results" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" hx-get="/search"
+            hx-trigger="load">
+            <!-- Results will be loaded here -->
+            <div class="col-span-full text-center text-slate-500 py-12 animate-pulse">
+                Loading recommendations...
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

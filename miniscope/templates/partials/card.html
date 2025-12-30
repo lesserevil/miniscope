@@ -1,0 +1,68 @@
+<div class="bg-slate-800 rounded-lg overflow-hidden border border-slate-700 shadow-lg hover:shadow-xl transition group relative"
+    id="mini-{{ mini.id }}">
+    <div class="aspect-square bg-slate-900 overflow-hidden relative">
+        <img src="/images/{{ mini.image_path.split('/')[-1] if mini.image_path else '' }}" alt="{{ mini.name }}"
+            class="w-full h-full object-cover group-hover:scale-105 transition duration-300" loading="lazy">
+
+        <!-- Metadata Overlay -->
+        <div
+            class="absolute inset-0 bg-black/80 p-4 text-xs opacity-0 group-hover:opacity-100 transition duration-300 flex flex-col justify-between overflow-y-auto backdrop-blur-sm">
+            <div class="space-y-2">
+                <div><span class="text-slate-400">Line:</span> <span class="text-slate-200">{{ mini.line }}</span></div>
+                <div><span class="text-slate-400">Set:</span> <span class="text-slate-200">{{ mini.set_name }}</span>
+                </div>
+                <div><span class="text-slate-400">Rarity:</span> <span class="text-slate-200">{{ mini.rarity }}</span>
+                </div>
+                <div><span class="text-slate-400">Size:</span> <span class="text-slate-200">{{ mini.size }}</span></div>
+                <div><span class="text-slate-400">#:</span> <span class="text-slate-200">{{ mini.number }}</span></div>
+
+                {% if mini.vision_description %}
+                <div class="pt-2 border-t border-slate-700">
+                    <span class="text-slate-400 block mb-1">AI Description:</span>
+                    <p class="text-slate-300 italic leading-relaxed">{{ mini.vision_description }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Re-analyze button moved/kept here but overlay might cover clickable area if I'm not careful. 
+                 The button is z-indexed? No. 
+                 The overlay covers the whole image. The button is effectively inside the overlay area now visually.
+                 But I need to make sure the button is still clickable or part of this overlay.
+                 Let's keep the button separate but ensure z-index.
+            -->
+        </div>
+
+        <div
+            class="absolute top-2 right-2 bg-black/60 px-2 py-1 rounded text-xs backdrop-blur-sm group-hover:opacity-0 transition">
+            {{ mini.rarity | default('Unknown', true) }}
+        </div>
+
+        <!-- Re-analyze button (z-index higher than overlay) -->
+        <button hx-post="/analyze/{{ mini.id }}" hx-target="#mini-{{ mini.id }}" hx-swap="outerHTML"
+            class="absolute bottom-2 right-2 bg-blue-600/90 hover:bg-blue-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition duration-300 z-10 shadow-lg"
+            title="Re-analyze with AI">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+                <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                <path d="M16 16h5v5" />
+            </svg>
+        </button>
+    </div>
+    <div class="p-4">
+        <h3 class="font-bold text-lg mb-1 truncate" title="{{ mini.name }}">{{ mini.name }}</h3>
+        <div class="text-sm text-slate-400 mb-2">{{ mini.set_name }}</div>
+
+        {% if mini.vision_description %}
+        <div class="text-xs text-slate-500 mb-2 line-clamp-2" title="{{ mini.vision_description }}">
+            {{ mini.vision_description }}
+        </div>
+        {% endif %}
+
+        <div class="flex justify-between items-center text-xs text-slate-500">
+            <span>{{ mini.line }}</span>
+            <span>#{{ mini.number }}</span>
+        </div>
+    </div>
+</div>
