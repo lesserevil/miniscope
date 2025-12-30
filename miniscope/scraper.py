@@ -172,7 +172,7 @@ class Scraper:
                 mini.image_path = await self.download_image(mini.image_url)
                 if mini.image_path:
                     logger.info(f"Analyzing image for {mini.name}...")
-                    mini.vision_description = self.ai.generate_description(mini.image_path)
+                    mini.vision_description = self.ai.generate_description(mini.image_path, name=mini.name)
                     # Create embedding from name + description
                     text_for_embedding = f"{mini.name} {mini.vision_description}"
                     mini.embedding = self.ai.get_embedding(text_for_embedding)
@@ -202,7 +202,7 @@ class Scraper:
         if not soup: return
         
         seen_sets = set()
-        queue = [(line_id, line_name)]
+        queue = [(line_id, line_name, 0)] # id, name_hint, attempt
         visited = set([line_id])
         
         count = 0
@@ -210,7 +210,7 @@ class Scraper:
         while queue:
             if limit > 0 and count >= limit: break
             
-            current_id, current_name_hint = queue.pop(0)
+            current_id, current_name_hint, attempt = queue.pop(0)
             
             # Optimization: Pre-check DB if name is known
             if not force and current_name_hint:
@@ -224,18 +224,25 @@ class Scraper:
                     continue
             url = f"{BASE_URL}/index.php?id={current_id}"
             
-            # Delay
-            await asyncio.sleep(1.0)
+            # Delay (base 1s + exponential backoff if retrying)
+            wait_time = 1.0 * (2 ** attempt) if attempt > 0 else 1.0
+            if attempt > 0:
+                logger.info(f"Retry attempt {attempt} for {current_id}. Waiting {wait_time}s...")
+            await asyncio.sleep(wait_time)
             
             try:
                 soup = await self.fetch_page(url)
             except Exception as e:
-                logger.error(f"Error fetching {url}: {e}. Waiting longer...")
-                await asyncio.sleep(10.0) # long pause
-                queue.insert(0, (current_id, current_name_hint)) # retry
+                if attempt < 5:
+                    logger.error(f"Error fetching {url}: {e}. Retrying...")
+                    queue.insert(0, (current_id, current_name_hint, attempt + 1))
+                else:
+                    logger.error(f"Failed to fetch {url} after 5 attempts. Skipping.")
                 continue
                 
-            if not soup: continue
+            if not soup: 
+                # If fetch didn't throw but returned None (e.g. 404 or empty)
+                continue
             
             # Try to parse minis directly
             minis = self.parse_miniatures(soup, line_name, line_name) # simplified naming for now
@@ -306,6 +313,6 @@ class Scraper:
                         
                     visited.add(child_id)
                     link_text = link.get_text(strip=True)
-                    queue.append((child_id, link_text))
+                    queue.append((child_id, link_text, 0))
 
 
