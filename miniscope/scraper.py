@@ -106,13 +106,15 @@ class Scraper:
                 continue
         return minis
 
-    async def download_image(self, url: str) -> Optional[str]:
+    async def download_image(self, url: str, mini_id: int) -> Optional[str]:
         if not url:
             return None
-        filename = url.split("/")[-1]
+        
+        # Prefix filename with DB ID to prevent collisions
+        raw_filename = url.split("/")[-1]
+        filename = f"{mini_id}_{raw_filename}"
         filepath = os.path.join(IMAGE_DIR, filename)
         
-        # If exists, skip (or overwrite if we want to ensure freshness)
         if os.path.exists(filepath):
             return filepath
 
@@ -168,8 +170,12 @@ class Scraper:
         minis = self.parse_miniatures(soup, set_name, line)
         if minis:
             logger.info(f"Found {len(minis)} miniatures in {set_name}")
+            
+            # First pass: Save to get IDs
+            await self.save_minis(minis)
+            
             for mini in minis:
-                mini.image_path = await self.download_image(mini.image_url)
+                mini.image_path = await self.download_image(mini.image_url, mini.id)
                 if mini.image_path:
                     logger.info(f"Analyzing image for {mini.name}...")
                     mini.vision_description = self.ai.generate_description(mini.image_path, name=mini.name)
@@ -177,6 +183,7 @@ class Scraper:
                     text_for_embedding = f"{mini.name} {mini.vision_description}"
                     mini.embedding = self.ai.get_embedding(text_for_embedding)
             
+            # Second pass: Update with image_path and AI results
             await self.save_minis(minis)
         else:
              # It might be a category page (e.g. "Core Sets"), let's digest its links
@@ -263,32 +270,30 @@ class Scraper:
                         logger.info(f"Skipping set '{real_set_name}' (already has {count_existing} minis).")
                         continue
 
-                logger.info(f"Scraped {len(minis)} minis from {current_id} ({real_set_name})")
-                
                 for m in minis:
                     m.set_name = real_set_name
                 
+                # First pass: Save to get IDs
+                await self.save_minis(minis)
+                
                 for mini in minis:
                     # Check DB for existing AI data to avoid re-running expensive AI
+                    # Note: We now have mini.id from the first save_minis call
                     with get_db_cursor() as cursor:
-                        cursor.execute("SELECT vision_description, embedding FROM miniatures WHERE name = ? AND set_name = ?", (mini.name, mini.set_name))
+                        cursor.execute("SELECT vision_description, embedding FROM miniatures WHERE id = ?", (mini.id,))
                         existing_row = cursor.fetchone()
                         
                     if existing_row and existing_row[0]:
                         mini.vision_description = existing_row[0]
-                        # Check embedding too? If we have description but no embedding (weird), maybe regen?
-                        # Assume if desc exists, we keep it.
-                        # Handle embedding deserialization if needed in save_minis, but here we just need to pass it.
-                        # Wait, save_minis expects python object for embedding, and serializes it.
-                        # The DB stores JSON string.
                         import json
                         if existing_row[1]:
-                                try:
-                                    mini.embedding = json.loads(existing_row[1])
-                                except:
-                                    mini.embedding = None
+                            try:
+                                mini.embedding = json.loads(existing_row[1])
+                            except:
+                                mini.embedding = None
                     
-                    mini.image_path = await self.download_image(mini.image_url)
+                    # Download image using the ID as prefix
+                    mini.image_path = await self.download_image(mini.image_url, mini.id)
                     
                     # Only run AI if description is missing
                     if mini.image_path and not mini.vision_description:
@@ -297,6 +302,7 @@ class Scraper:
                         text_for_embedding = f"{mini.name} {mini.vision_description}"
                         mini.embedding = self.ai.get_embedding(text_for_embedding)
                     
+                # Second pass: Update with image_path and AI results
                 await self.save_minis(minis)
                 count += 1
             else:
