@@ -1,0 +1,1 @@
+- Used `uv run ruff check --fix` to automatically sort imports in `auntie/config.py`. Verified with a subsequent `uv run ruff check` showing no errors.
