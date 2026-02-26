@@ -58,3 +58,37 @@
 ### Files Created/Modified
 - `auntie/skills/loader.py` - SkillLoader class
 - `auntie/skills/demo.py` - Demo skill for verification
+## 2026-02-26 - Task 5: Pydantic Configuration
+
+### Implementation Notes
+- Created `auntie/config.py` with BotSettings class
+- Inherits from pydantic_settings.BaseSettings
+- Loads configuration from .env file automatically
+- All required fields validated with field_validator decorators
+
+### Fields Implemented
+**Required:**
+- TELEGRAM_BOT_TOKEN: str - Validated non-empty
+- CHAT_ID_WHITELIST: str - Validated non-empty
+
+**Optional (with defaults):**
+- DEBUG: bool = False
+- LOG_LEVEL: str = "INFO" (validated: DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- CONVERSATION_RETENTION_DAYS: int = 30 (validated >= 1)
+- ENABLE_BOOKMARK_SKILL: bool = True
+- DATABASE_PATH: str = "auntie.db"
+
+### Helper Methods
+- get_allowed_chat_ids(): Parses comma-separated CHAT_ID_WHITELIST into list
+- is_chat_allowed(chat_id): Checks if chat ID is in whitelist
+
+### QA Scenarios Completed
+- Scenario 1: Config loads without errors ✓
+- Scenario 2: Debug flag controls logging ✓
+
+### Evidence Files
+- `.sisyphus/evidence/task-5-config-load-okay.log`
+- `.sisyphus/evidence/task-5-debug-flag-okay.log`
+
+### Files Created/Modified
+- `auntie/config.py` - BotSettings Pydantic configuration class
