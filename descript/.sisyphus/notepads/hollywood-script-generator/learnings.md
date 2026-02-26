@@ -285,3 +285,192 @@
 - **Language option**: Optional language parameter for non-English content
 - **Result dataclass**: `TranscriptionResult` encapsulates text, segments, and timing
 
+
+
+## Task 8: Skip Section Manager Learnings
+
+### Overlap Detection Logic
+- **Mathematical approach**: Two sections overlap when: start1 < end2 AND end1 > start2
+- **Adjacent sections allowed**: (10-30) and (30-50) don't overlap - useful for back-to-back skip ranges
+- **Complete containment**: Handled automatically by the same logic
+- **Direction independent**: Logic works regardless of order of comparison
+
+### CRUD Service Pattern
+- **Session injection**: Pass SQLAlchemy session to service constructor
+- **Immediate commit**: Call session.commit() after modifications
+- **Refresh after commit**: Call session.refresh() to get DB-generated fields (like ID)
+- **Return instances**: Return model instances, not just IDs
+
+### Validation Strategy
+- **Two-phase validation**:
+  1. Time range validity (start < end, no negatives)
+  2. Overlap check with existing sections
+- **Separate error types**: Different exceptions for different validation failures
+- **Partial updates**: Only validate when relevant fields change
+
+### Testing CRUD Services
+- **In-memory SQLite**: Fast, isolated tests with real database behavior
+- **Fixture pattern**: Create base fixtures (session, video, job) for reuse
+- **Test categories**: Group tests by operation type (Add, Get, Delete, Update)
+- **Edge cases**: Test boundaries (adjacent sections, exact overlaps)
+- **Error cases**: Verify proper exceptions raised with pytest.raises()
+
+### SQLAlchemy 2.0 Best Practices
+- **session.get(Model, id)**: New method for primary key lookup (replaces query.get())
+- **select() syntax**: Modern query style with select(Model) instead of session.query()
+- **scalars().all()**: Get list of model instances from results
+- **order_by()**: Sort in query rather than in Python for efficiency
+
+
+## Task 9: Credits/Ads Filter (Heuristics) Learnings
+
+### Black Frame Detection
+
+#### OpenCV Frame Processing
+- **VideoCapture properties**: Use `cv2.CAP_PROP_FPS` (5) and `cv2.CAP_PROP_FRAME_COUNT` (7) for timing
+- **Frame seeking**: `cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)` to jump to specific frames
+- **Brightness calculation**: Average of grayscale pixels gives reliable brightness metric
+- **Threshold approach**: Default threshold of 20 (0-255 scale) works well for detecting black frames
+
+#### Detection Logic
+- Track consecutive black frames to form sections
+- Require minimum duration (default 1.0s) to filter out brief transitions
+- Calculate confidence based on proportion of black frames in section
+
+### Silence Detection
+
+#### Audio Processing with MoviePy
+- **Subclip extraction**: Use `clip.audio.subclipped(start, end).to_soundarray()` for chunks
+- **Chunk size**: 500ms chunks provide good balance between precision and performance
+- **Mono conversion**: Average stereo channels for consistent analysis
+- **dB calculation**: RMS to dB conversion: `20 * log10(rms)`
+
+#### Threshold Approach
+- Default -40 dB threshold captures typical silent sections
+- Credits often have very low or no audio
+- Advertisements may have variable audio levels
+
+### Section Combination Strategy
+
+#### Merging Logic
+- Sort all sections by start time first
+- Check for overlap: `section1.start < section2.end AND section1.end > section2.start`
+- When merging, extend to maximum end time of overlapping sections
+- Manual sections take precedence in method assignment
+
+#### Adjacent vs Overlapping
+- Adjacent sections (end1 == start2) remain separate
+- Only truly overlapping sections are merged
+- This preserves distinct credits/ad breaks
+
+### Testing Challenges
+
+#### Mock Complexity
+- Video frame mocks need sufficient frames to exceed min_section_duration
+- Audio mocking requires chain: `subclipped().to_soundarray()`
+- Frame counts must align with FPS and duration expectations
+
+#### TDD Benefits
+- Writing tests first forced clear API design
+- Mock setup revealed implementation requirements early
+- Edge cases (no video, no audio) were considered upfront
+
+### Integration Points
+
+#### With VideoChunker
+- Can be run on full video or per-chunk basis
+- Chunks provide natural boundaries for analysis
+- Scene changes help identify likely credit boundaries
+
+#### With SkipSectionManager
+- Heuristic detections combine with user-specified skips
+- Same FilteredSection format allows seamless integration
+- Manual skips take precedence when merging overlaps
+
+### Configuration Best Practices
+
+#### Threshold Validation
+- Validate thresholds in constructor (fail fast)
+- Black frame: 1-255 range
+- Silence: negative dB values
+- Duration: positive seconds
+
+#### Default Values
+- Conservative defaults prevent false positives
+- Users can adjust based on content type
+- Document thresholds clearly for end users
+
+
+## Task 9: Credits/Ads Filter Learnings
+
+### Black Frame Detection with OpenCV
+
+**Implementation Details:**
+- Use `cv2.VideoCapture` for reading video frames
+- Convert to grayscale with `cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)`
+- Calculate mean brightness with `np.mean(gray)`
+- Track consecutive frames below threshold using state machine pattern
+- Consider FPS when calculating durations: `duration = frame_count / fps`
+
+**Threshold Considerations:**
+- Default threshold of 20 works for most content (0-255 scale)
+- Typical video has brightness > 50, black frames < 10
+- Should be configurable per video type
+
+### Silence Detection with Audio Processing
+
+**Implementation Details:**
+- Use MoviePy's `VideoFileClip` for audio extraction
+- Convert stereo to mono: `np.mean(audio_chunk, axis=1)`
+- Calculate RMS: `np.sqrt(np.mean(audio_chunk**2))`
+- Convert to dB: `20 * np.log10(rms)`
+- Protect against log(0) with epsilon check
+
+**Chunk Processing:**
+- Process in 500ms chunks for reasonable granularity
+- Track consecutive silent chunks
+- Minimum duration filtering to exclude brief pauses
+
+### Test Mocking Strategy
+
+**Video Frame Mocking:**
+```python
+mock_cap.get.side_effect = lambda prop: {
+    5: 10.0,  # FPS (cv2.CAP_PROP_FPS = 5)
+    7: 100,   # Total frames (cv2.CAP_PROP_FRAME_COUNT = 7)
+}.get(prop, 0)
+```
+
+**Audio Chain Mocking:**
+```python
+mock_clip.audio.subclipped(start, end).to_soundarray()
+```
+Requires mocking the full chain of calls.
+
+**Key Lesson:** Ensure enough mock frames to exceed `min_section_duration`:
+- At 10 FPS, need at least 10 frames for 1 second
+- Add buffer: use 20+ frames to be safe
+
+### Section Merging Logic
+
+**Overlap Detection:**
+Two sections overlap if: `start1 < end2 AND end1 > start2`
+Adjacent sections (end1 == start2) do NOT overlap.
+
+**Merge Priority:**
+- Manual sections take precedence over detected
+- When merging, preserve MANUAL method and confidence=1.0
+- Extend end time to max of both sections
+
+### Integration Points
+
+**With SkipSectionManager:**
+- CreditsFilter works independently (no DB)
+- Can convert FilteredSection to SkipSection for persistence
+- Combines detected + manual before storage
+
+**With VideoChunker:**
+- Filter video before chunking for efficiency
+- Or filter per-chunk for more granular control
+- Skip sections reduce chunk count
+
