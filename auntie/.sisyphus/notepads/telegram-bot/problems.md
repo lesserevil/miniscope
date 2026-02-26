@@ -92,3 +92,57 @@
 
 ### Files Created/Modified
 - `auntie/config.py` - BotSettings Pydantic configuration class
+
+## 2026-02-26 - Task 6: Main Bot Setup
+
+### Implementation Notes
+- Created `auntie/config/settings.py` with BotSettings class (moved from config.py)
+- Created `auntie/config/__init__.py` to export settings instance
+- Created `auntie/main.py` with full bot implementation:
+  - Application builder from python-telegram-bot
+  - /start command handler with whitelist validation
+  - Message handler with whitelist validation and skill dispatch
+  - Graceful shutdown with SIGTERM/SIGINT handling
+  - Logging configuration based on settings
+
+### Key Features Implemented
+**Bot Initialization:**
+- Loads config from `auntie.config.settings`
+- Builds Application with token from settings
+- Initializes database on startup
+- Loads skills via SkillLoader
+
+**Security:**
+- Chat ID whitelist validation on every message
+- /start command checks whitelist before responding
+- Unauthorized users receive "unauthorized" message
+- Supports both string and integer chat ID comparisons
+
+**Graceful Shutdown:**
+- SIGTERM and SIGINT signal handlers registered
+- Cleanup function closes DB connections
+- Skill cleanup called for all loaded skills
+- Application properly stopped and shutdown
+- Logs shutdown completion
+
+**Logging:**
+- Configured based on settings.LOG_LEVEL
+- Debug mode enables verbose telegram/httpx logging
+- Structured format with timestamp, name, level, message
+
+### QA Scenarios Completed
+- Scenario 1: Bot starts successfully ✓
+- Scenario 2: Chat ID whitelist enforced ✓
+- Scenario 3: Graceful shutdown works ✓
+
+### Evidence Files
+- `.sisyphus/evidence/task-6-bot-start-okay.log`
+- `.sisyphus/evidence/task-6-whitelist-enforced.log`
+- `.sisyphus/evidence/task-6-shutdown-okay.log`
+
+### Files Created/Modified
+- `auntie/config/settings.py` - BotSettings configuration class
+- `auntie/config/__init__.py` - Config package exports
+- `auntie/main.py` - Main bot entry point
+- Deleted: `auntie/config.py` (converted to package)
+
