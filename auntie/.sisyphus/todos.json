@@ -1,0 +1,16 @@
+{
+  "plan": "telegram-bot",
+  "tasks": [
+    { "id": "task-1", "content": "Project Bootstrap & Configuration", "status": "pending", "priority": "high" },
+    { "id": "task-2", "content": "Database Foundation (SQLite + WAL mode)", "status": "pending", "priority": "high" },
+    { "id": "task-3", "content": "Base Skill Interface", "status": "pending", "priority": "high" },
+    { "id": "task-4", "content": "Skill Loader (dynamic discovery)", "status": "pending", "priority": "high" },
+    { "id": "task-5", "content": "Pydantic Configuration", "status": "pending", "priority": "high" },
+    { "id": "task-6", "content": "Main Bot Setup (chat ID whitelist, graceful shutdown)", "status": "pending", "priority": "high" },
+    { "id": "task-7", "content": "Bookmark Demo Skill", "status": "pending", "priority": "high" },
+    { "id": "task-8", "content": "Integration Tests (skill loader + database)", "status": "pending", "priority": "medium" },
+    { "id": "task-9", "content": "Unit Tests (pytest mocks, >80% coverage)", "status": "pending", "priority": "medium" },
+    { "id": "task-10", "content": "Deployment Configs (systemd + docker-compose)", "status": "pending", "priority": "medium" },
+    { "id": "task-11", "content": "Documentation & README", "status": "pending", "priority": "medium" }
+  ]
+}
